@@ -15,7 +15,6 @@ use warpui::{ModelHandle, ModelSpawner, SingletonEntity};
 use crate::ai::agent::conversation::AIConversationId;
 use crate::ai::ambient_agents::AmbientAgentTaskId;
 use crate::ai::mcp::JSONMCPServer;
-use warp_managed_secrets::ManagedSecretValue;
 use crate::server::server_api::harness_support::{upload_to_target, HarnessSupportClient};
 use crate::server::server_api::ServerApi;
 use crate::terminal::cli_agent_sessions::{CLIAgentSessionStatus, CLIAgentSessionsModel};
@@ -27,6 +26,7 @@ use warp_cli::{
     SESSION_SHARING_SERVER_URL_OVERRIDE_ENV, WS_SERVER_URL_OVERRIDE_ENV,
 };
 use warp_core::channel::ChannelState;
+use warp_managed_secrets::ManagedSecretValue;
 
 use super::terminal::{CommandHandle, TerminalDriver};
 use super::{
@@ -143,6 +143,7 @@ pub(crate) trait ThirdPartyHarness: Send + Sync {
         &self,
         _working_dir: &Path,
         _system_prompt: Option<&str>,
+        _resolved_env_vars: &HashMap<OsString, OsString>,
         _secrets: &HashMap<String, ManagedSecretValue>,
         _resolved_mcp_servers: &HashMap<String, JSONMCPServer>,
     ) -> Result<(), AgentDriverError> {

@@ -636,7 +636,9 @@ fn resolve_suffix_from_raw_value_secret() {
     let key = "sk-ant-api03-abcdefghij1234567890ABCDEFGHIJ1234567890abcdefghij1234567890QLWn-dUnuwQ-hIhDiAAA";
     let secrets = HashMap::from([(
         "ANTHROPIC_API_KEY".to_string(),
-        ManagedSecretValue::RawValue { value: key.to_string() },
+        ManagedSecretValue::RawValue {
+            value: key.to_string(),
+        },
     )]);
     let suffix = resolve_anthropic_api_key_suffix(&secrets);
     assert_eq!(suffix.as_deref(), Some("QLWn-dUnuwQ-hIhDiAAA"));
@@ -648,7 +650,9 @@ fn resolve_suffix_returns_none_for_short_key() {
     std::env::remove_var(ANTHROPIC_API_KEY_ENV);
     let secrets = HashMap::from([(
         "ANTHROPIC_API_KEY".to_string(),
-        ManagedSecretValue::RawValue { value: "short".to_string() },
+        ManagedSecretValue::RawValue {
+            value: "short".to_string(),
+        },
     )]);
     assert_eq!(resolve_anthropic_api_key_suffix(&secrets), None);
 }
@@ -749,7 +753,8 @@ fn suffix_uses_worker_injected_env_when_present() {
     let secrets = HashMap::from([(
         "ANTHROPIC_API_KEY".to_string(),
         ManagedSecretValue::RawValue {
-            value: "sk-ant-api03-RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR-resolved-val!".to_string(),
+            value: "sk-ant-api03-RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR-resolved-val!"
+                .to_string(),
         },
     )]);
     let suffix = resolve_anthropic_api_key_suffix(&secrets);
