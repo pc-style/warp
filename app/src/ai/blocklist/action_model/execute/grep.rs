@@ -206,38 +206,13 @@ impl GrepExecutor {
 
     pub(super) fn should_autoexecute(
         &self,
-        input: ExecuteActionInput,
-        ctx: &mut ModelContext<Self>,
+        _input: ExecuteActionInput,
+        _ctx: &mut ModelContext<Self>,
     ) -> bool {
-        let ExecuteActionInput {
-            action:
-                AIAgentAction {
-                    action: AIAgentActionType::Grep { path, .. },
-                    ..
-                },
-            conversation_id,
-        } = input
-        else {
-            return false;
-        };
-
-        let current_working_directory = self
-            .active_session
-            .as_ref(ctx)
-            .current_working_directory()
-            .cloned();
-        let shell = self.active_session.as_ref(ctx).shell_launch_data(ctx);
-        let absolute_path = host_native_absolute_path(path, &shell, &current_working_directory);
-
-        BlocklistAIPermissions::handle(ctx)
-            .as_ref(ctx)
-            .can_read_files_with_conversation(
-                &conversation_id,
-                vec![PathBuf::from(absolute_path)],
-                Some(self.terminal_view_id),
-                ctx,
-            )
-            .is_allowed()
+        // Grep execution builds a shell command from model-controlled values
+        // (queries and path). Always require confirmation so this route is
+        // gated by command-execution permissions.
+        false
     }
 
     pub(super) fn execute(
