@@ -16,10 +16,12 @@ Use the `computer_use` tool to visually test that Warp looks and behaves as inte
 Launch Warp from the repository root with:
 
 ```bash
-cargo run -- --api-key $STAGING_USER_WARP_API_KEY
+cargo run
 ```
 
-The `--api-key` flag authenticates using the API key from the `STAGING_USER_WARP_API_KEY` environment variable, so the app starts directly without interactive login prompts.
+Do **not** pass API keys on the command line. Command-line args are visible to other processes and logs.
+
+If authentication is required for a trusted test, use a short-lived scoped credential and inject it through a secure channel supported by the app/runtime (never via CLI args), or use a non-authenticated/mocked path for UI validation.
 
 Initial builds may take several minutes; subsequent incremental builds are faster.
 
@@ -41,7 +43,7 @@ Keep mocked changes minimal and focused — only change what's necessary to reac
 
 Call the `computer_use` tool with a task description that includes:
 
-- The command to build and launch Warp (typically `cargo run -- --api-key $STAGING_USER_WARP_API_KEY` from the repo root)
+- The command to build and launch Warp (typically `cargo run` from the repo root)
 - Step-by-step instructions for navigating to the UI being tested
 - **Specific observations to report**: describe exactly what elements, text, colors, layout, or states the tool should observe and describe back
 - Do **not** include expected values in the task — the tool should report what it sees, not judge correctness
