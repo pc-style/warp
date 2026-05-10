@@ -466,6 +466,39 @@ mod should_auto_launch_tests {
         assert!(should_auto_launch(false, false, false, &state, &config));
     }
 
+
+    #[test]
+    fn returns_false_when_remote_computer_use_enabled() {
+        let state = RunAgentsEditState::from_request(&make_request(
+            "oz",
+            RunAgentsExecutionMode::Remote {
+                environment_id: "env-1".to_string(),
+                worker_host: "warp".to_string(),
+                computer_use_enabled: true,
+            },
+        ));
+        let config = Some((
+            OrchestrationConfig {
+                model_id: "auto".to_string(),
+                harness_type: "oz".to_string(),
+                execution_mode: OrchestrationExecutionMode::Remote {
+                    environment_id: "env-1".to_string(),
+                    worker_host: "warp".to_string(),
+                },
+            },
+            OrchestrationConfigStatus::Approved,
+        ));
+        assert!(!should_auto_launch(false, false, false, &state, &config));
+    }
+
+    #[test]
+    fn returns_false_when_request_has_skills() {
+        let mut req = make_request("oz", RunAgentsExecutionMode::Local);
+        req.skills.push(skill_ref("foo"));
+        let state = RunAgentsEditState::from_request(&req);
+        let config = Some(matching_config());
+        assert!(!should_auto_launch(false, false, false, &state, &config));
+    }
     #[test]
     fn empty_model_id_inherits_from_config() {
         let mut req = make_request("oz", RunAgentsExecutionMode::Local);
