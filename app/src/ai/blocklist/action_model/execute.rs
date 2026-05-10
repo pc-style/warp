@@ -1313,7 +1313,11 @@ async fn is_git_repository(absolute_path: &str, session: &Session) -> anyhow::Re
             ExecuteCommandOptions::default(),
         )
         .await?;
-    Ok(command_output.success())
+    if !command_output.success() {
+        return Ok(false);
+    }
+    let stdout = String::from_utf8_lossy(&command_output.stdout);
+    Ok(stdout.trim().eq_ignore_ascii_case("true"))
 }
 
 fn shell_quoted_literal(value: &str, shell_type: ShellType) -> String {

@@ -41,7 +41,6 @@ Keep mocked changes minimal and focused — only change what's necessary to reac
 
 Call the `computer_use` tool with a task description that includes:
 
-- The command to build and launch Warp (typically `cargo run -- --api-key $STAGING_USER_WARP_API_KEY` from the repo root)
 - The command to build and launch Warp (typically `WARP_API_KEY="$STAGING_USER_WARP_API_KEY" cargo run` from the repo root)
 - Step-by-step instructions for navigating to the UI being tested
 - **Specific observations to report**: describe exactly what elements, text, colors, layout, or states the tool should observe and describe back

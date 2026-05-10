@@ -113,6 +113,8 @@ fn run_git_config_add(key: &str, value: &str) {
 ///   URL forms, so operations on either form use HTTPS credentials instead
 ///   of looking for an SSH key.
 pub(crate) fn setup_git_config(credentials: &[GitCredential]) {
+    // 70 minutes keeps credentials warm past the normal refresh cadence (50m)
+    // while still naturally expiring if refreshes stop.
     run_git_config("credential.helper", "cache --timeout=4200");
     // Use --add for both forms per host so all values coexist as a
     // multi-value key rather than each entry overwriting the previous one.
