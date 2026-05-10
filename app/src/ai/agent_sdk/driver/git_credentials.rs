@@ -1,16 +1,15 @@
 /// Git credentials management for cloud agent sandboxes.
 ///
 /// This module handles:
-/// - Writing `~/.git-credentials` and `~/.config/gh/hosts.yaml` so that `git`
-///   and the `gh` CLI can authenticate to GitHub without requiring environment
-///   variables.
+/// - Seeding Git's in-memory credential cache so `git` can authenticate without
+///   persisting tokens to disk.
 /// - One-time git configuration (`credential.helper store`, SSH→HTTPS URL
 ///   rewrites).
 /// - Configuring the git user identity from the server-returned username/email.
 /// - An async refresh loop that periodically fetches a fresh token from the
-///   server and overwrites the credential files, keeping long-running agents
+///   server and refreshes the in-memory credentials, keeping long-running agents
 ///   authenticated for their entire duration.
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use std::{io::Write as _, sync::Arc, time::Duration};
 
 use anyhow::{Context, Result};
 
@@ -27,127 +26,41 @@ pub(crate) const GIT_CREDENTIALS_REFRESH_INTERVAL: Duration = Duration::from_sec
 const DEFAULT_GIT_NAME: &str = "Oz";
 const DEFAULT_GIT_EMAIL: &str = "oz-agent@warp.dev";
 
-fn home_dir() -> Result<PathBuf> {
-    dirs::home_dir().ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))
-}
-
-/// Write `content` to `path` using owner-only (0600) permissions.
-///
-/// On Unix the file is created with mode 0600 so no other user can read the
-/// credential material. On non-Unix platforms the function falls back to the
-/// standard write, relying on OS default permissions.
-fn write_secret_file(path: &std::path::Path, content: &str) -> Result<()> {
-    #[cfg(unix)]
-    {
-        use std::io::Write as _;
-        use std::os::unix::fs::OpenOptionsExt as _;
-        use std::os::unix::fs::PermissionsExt as _;
-        let mut file = std::fs::OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .mode(0o600)
-            .open(path)
-            .with_context(|| format!("Failed to open {} for writing", path.display()))?;
-        file.set_permissions(std::fs::Permissions::from_mode(0o600))
-            .with_context(|| format!("Failed to set permissions on {}", path.display()))?;
-        file.write_all(content.as_bytes())
-            .with_context(|| format!("Failed to write {}", path.display()))?;
-    }
-    #[cfg(not(unix))]
-    {
-        std::fs::write(path, content)
-            .with_context(|| format!("Failed to write {}", path.display()))?;
-    }
-    Ok(())
-}
-
-/// Write `~/.git-credentials` with the given credentials.
-///
-/// Each credential entry is formatted as:
-/// - `https://{username}:{token}@{host}` when a username is present
-/// - `https://x-access-token:{token}@{host}` for service-account tokens
-///
-/// The write is done atomically: a temporary file is written then renamed.
-fn write_git_credentials_file(credentials: &[GitCredential]) -> Result<()> {
-    if credentials.is_empty() {
-        return Ok(());
-    }
-
-    let home = home_dir()?;
-    let path = home.join(".git-credentials");
-    let tmp_path = home.join(".git-credentials.tmp");
-
-    let mut content = String::new();
+pub(crate) fn write_git_credentials(credentials: &[GitCredential]) -> Result<()> {
     for cred in credentials {
-        let userinfo = match &cred.username {
-            Some(username) => format!("{username}:{}", cred.token),
-            None => format!("x-access-token:{}", cred.token),
-        };
-        content.push_str(&format!("https://{}@{}\n", userinfo, cred.host));
-    }
+        let username = cred.username.as_deref().unwrap_or("x-access-token");
+        let mut child = BlockingCommand::new("git")
+            .args(["credential", "approve"])
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::piped())
+            .spawn()
+            .context("Failed to start `git credential approve`")?;
 
-    write_secret_file(&tmp_path, &content)?;
-    std::fs::rename(&tmp_path, &path).with_context(|| {
-        format!(
-            "Failed to rename {} to {}",
-            tmp_path.display(),
-            path.display()
-        )
-    })?;
+        let stdin = child
+            .stdin
+            .as_mut()
+            .context("Failed to open stdin for `git credential approve`")?;
+        writeln!(stdin, "protocol=https").context("Failed to write git credential protocol")?;
+        writeln!(stdin, "host={}", cred.host).context("Failed to write git credential host")?;
+        writeln!(stdin, "username={username}")
+            .context("Failed to write git credential username")?;
+        writeln!(stdin, "password={}", cred.token)
+            .context("Failed to write git credential token")?;
+        writeln!(stdin).context("Failed to finalize git credential input")?;
+        drop(child.stdin.take());
 
-    Ok(())
-}
-
-/// Write `~/.config/gh/hosts.yaml` so the `gh` CLI is authenticated.
-///
-/// The YAML format is stable for `gh` v2+:
-/// ```yaml
-/// github.com:
-///     oauth_token: TOKEN
-///     git_protocol: https
-///     user: USERNAME
-/// ```
-///
-/// The write is atomic: a temporary file is written then renamed.
-fn write_gh_hosts_yaml(credentials: &[GitCredential]) -> Result<()> {
-    if credentials.is_empty() {
-        return Ok(());
-    }
-
-    let home = home_dir()?;
-    let gh_config_dir = home.join(".config").join("gh");
-    std::fs::create_dir_all(&gh_config_dir)
-        .with_context(|| format!("Failed to create {}", gh_config_dir.display()))?;
-
-    let path = gh_config_dir.join("hosts.yaml");
-    let tmp_path = gh_config_dir.join("hosts.yaml.tmp");
-
-    let mut yaml = String::new();
-    for cred in credentials {
-        yaml.push_str(&format!("{}:\n", cred.host));
-        yaml.push_str(&format!("    oauth_token: {}\n", cred.token));
-        yaml.push_str("    git_protocol: https\n");
-        if let Some(username) = &cred.username {
-            yaml.push_str(&format!("    user: {username}\n"));
+        let output = child
+            .wait_with_output()
+            .context("Failed waiting on `git credential approve`")?;
+        if !output.status.success() {
+            anyhow::bail!(
+                "git credential approve failed for {}: {}",
+                cred.host,
+                String::from_utf8_lossy(&output.stderr)
+            );
         }
     }
-
-    write_secret_file(&tmp_path, &yaml)?;
-    std::fs::rename(&tmp_path, &path).with_context(|| {
-        format!(
-            "Failed to rename {} to {}",
-            tmp_path.display(),
-            path.display()
-        )
-    })?;
-
-    Ok(())
-}
-
-pub(crate) fn write_git_credentials(credentials: &[GitCredential]) -> Result<()> {
-    write_git_credentials_file(credentials)?;
-    write_gh_hosts_yaml(credentials)?;
     Ok(())
 }
 
@@ -193,13 +106,14 @@ fn run_git_config_add(key: &str, value: &str) {
 
 /// Run one-time git configuration that is set at startup and never needs to
 /// be refreshed:
-/// - `credential.helper store` so git reads `~/.git-credentials`
+/// - `credential.helper cache` so credentials remain in-memory instead of
+///   persisting to disk
 /// - SSH→HTTPS URL rewrites for each credential host, covering both the
 ///   scp-style (`git@{host}:`) and explicit-protocol (`ssh://git@{host}/`)
 ///   URL forms, so operations on either form use HTTPS credentials instead
 ///   of looking for an SSH key.
 pub(crate) fn setup_git_config(credentials: &[GitCredential]) {
-    run_git_config("credential.helper", "store");
+    run_git_config("credential.helper", "cache --timeout=4200");
     // Use --add for both forms per host so all values coexist as a
     // multi-value key rather than each entry overwriting the previous one.
     for cred in credentials {

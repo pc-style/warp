@@ -104,6 +104,7 @@ use crate::{
     },
     BlocklistAIHistoryModel,
 };
+use crate::terminal::model::session::command_executor::shell_escape_single_quotes;
 
 /// Types of actions that can be executed in parallel.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1287,10 +1288,11 @@ async fn read_binary_file_context(
 /// Returns true if the given path is a regular file on the session's filesystem.
 /// Runs a shell command on the session so it works for both local and remote sessions.
 async fn is_file_path(path: &str, session: &Session) -> bool {
+    let escaped_path = shell_quoted_literal(path, session.shell().shell_type());
     let command = if session.shell().shell_type() == ShellType::PowerShell {
-        format!("if (Test-Path -PathType Leaf \"{path}\") {{ exit 0 }} else {{ exit 1 }}")
+        format!("if (Test-Path -LiteralPath {escaped_path} -PathType Leaf) {{ exit 0 }} else {{ exit 1 }}")
     } else {
-        format!("test -f \"{path}\"")
+        format!("test -f {escaped_path}")
     };
     session
         .execute_command(&command, None, None, ExecuteCommandOptions::default())
@@ -1301,7 +1303,8 @@ async fn is_file_path(path: &str, session: &Session) -> bool {
 
 /// Returns true if git is installed and the given path is in a git repository.
 async fn is_git_repository(absolute_path: &str, session: &Session) -> anyhow::Result<bool> {
-    let git_command = format!("git -C \"{absolute_path}\" rev-parse");
+    let escaped_path = shell_quoted_literal(absolute_path, session.shell().shell_type());
+    let git_command = format!("git -C {escaped_path} rev-parse --is-inside-work-tree");
     let command_output = session
         .execute_command(
             git_command.as_str(),
@@ -1311,6 +1314,11 @@ async fn is_git_repository(absolute_path: &str, session: &Session) -> anyhow::Re
         )
         .await?;
     Ok(command_output.success())
+}
+
+fn shell_quoted_literal(value: &str, shell_type: ShellType) -> String {
+    let escaped = shell_escape_single_quotes(value, shell_type);
+    format!("'{escaped}'")
 }
 
 fn get_server_output_id(

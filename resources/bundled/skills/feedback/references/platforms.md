@@ -14,8 +14,10 @@ Resolve the OS from the machine where the reported behavior actually happens. Do
 Run the bundled helper script when you need to resolve OS name and version:
 
 ```bash
-python3 scripts/resolve_platform.py
+python3 /absolute/path/to/bundled/skills/feedback/scripts/resolve_platform.py
 ```
+
+Never execute `scripts/...` relative to the current working directory. Always use the trusted bundled skill script path.
 
 Use the script output directly when filling `Operating system`. Ask the user only if Python is unavailable or the output still does not identify the relevant environment precisely enough.
 
@@ -24,7 +26,7 @@ Use the script output directly when filling `Operating system`. Ask the user onl
 For packaged native Warp installs, run the bundled helper script to resolve the installed Warp version:
 
 ```bash
-python3 scripts/resolve_warp_version.py
+python3 /absolute/path/to/bundled/skills/feedback/scripts/resolve_warp_version.py
 ```
 
 The script reads the bundled version metadata file (`bundled/metadata/version.json`) relative to its own location and prints a JSON object. When the version is available, the output is `{"warp_version": "..."}`; use that value directly when filling `Warp version`. When the metadata file is missing or unreadable, the script prints `{}` and exits 0 — treat that as "version unknown" and follow the fallbacks below.

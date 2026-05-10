@@ -14,6 +14,7 @@ use crate::ai::agent::{
 };
 use crate::ai::blocklist::BlocklistAIPermissions;
 use crate::ai::paths::{host_native_absolute_path, join_paths, shell_native_absolute_path};
+use crate::terminal::model::session::command_executor::shell_escape_single_quotes;
 use crate::terminal::model::session::ExecuteCommandOptions;
 use crate::{
     ai::agent::AIAgentActionResultType,
@@ -36,6 +37,11 @@ use super::{
 pub struct FileGlobExecutor {
     active_session: ModelHandle<ActiveSession>,
     terminal_view_id: EntityId,
+}
+
+fn shell_literal(value: &str, shell_type: ShellType) -> String {
+    let escaped = shell_escape_single_quotes(value, shell_type);
+    format!("'{escaped}'")
 }
 
 fn log_file_glob_error(conversation_id: AIConversationId, ctx: &mut AppContext) {
@@ -239,6 +245,7 @@ async fn run_git_ls_files_command(
     session: &Session,
     shell_launch_data: Option<ShellLaunchData>,
 ) -> anyhow::Result<FileGlobV2Result> {
+    let shell_type = session.shell().shell_type();
     let pattern_args = patterns
         .iter()
         .flat_map(|pattern| {
@@ -249,7 +256,7 @@ async fn run_git_ls_files_command(
                 join_paths(&[target_path, "*", pattern], shell_launch_data.as_ref()),
             ]
         })
-        .map(|pattern| format!("'{pattern}'"))
+        .map(|pattern| shell_literal(&pattern, shell_type))
         .join(" ");
     let command = format!("git ls-files -c -o --exclude-standard -- {pattern_args}");
 
@@ -287,12 +294,16 @@ async fn run_find_command(
     target_path: &str,
     session: &Session,
 ) -> anyhow::Result<FileGlobV2Result> {
+    let shell_type = session.shell().shell_type();
     // Build a find command with -name for each pattern
     let pattern_args = patterns
         .iter()
-        .map(|pattern| format!(" -name '{pattern}'"))
+        .map(|pattern| format!(" -name {}", shell_literal(pattern, shell_type)))
         .join(" -o");
-    let find_command = format!("find \"{target_path}\" -type f {pattern_args}");
+    let find_command = format!(
+        "find {} -type f {pattern_args}",
+        shell_literal(target_path, shell_type)
+    );
 
     let command_output = session
         .execute_command(
@@ -331,12 +342,14 @@ async fn run_powershell_get_childitem_command(
     target_path: &str,
     session: &Session,
 ) -> anyhow::Result<FileGlobV2Result> {
+    let shell_type = ShellType::PowerShell;
     let pattern_args = patterns
         .iter()
-        .map(|pattern| format!("'{pattern}'"))
+        .map(|pattern| shell_literal(pattern, shell_type))
         .join(",");
     let command = format!(
-        "Get-ChildItem -File -Recurse -Include {pattern_args} -Path \"{target_path}\" | ForEach-Object {{ $_.FullName }}"
+        "Get-ChildItem -File -Recurse -Include {pattern_args} -LiteralPath {} | ForEach-Object {{ $_.FullName }}",
+        shell_literal(target_path, shell_type)
     );
 
     let command_output = session
