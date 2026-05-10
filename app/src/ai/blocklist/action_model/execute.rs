@@ -1304,7 +1304,7 @@ async fn is_file_path(path: &str, session: &Session) -> bool {
 /// Returns true if git is installed and the given path is in a git repository.
 async fn is_git_repository(absolute_path: &str, session: &Session) -> anyhow::Result<bool> {
     let escaped_path = shell_quoted_literal(absolute_path, session.shell().shell_type());
-    let git_command = format!("git -C {escaped_path} rev-parse --is-inside-work-tree");
+    let git_command = format!("git -C {escaped_path} rev-parse --git-dir");
     let command_output = session
         .execute_command(
             git_command.as_str(),
@@ -1313,11 +1313,7 @@ async fn is_git_repository(absolute_path: &str, session: &Session) -> anyhow::Re
             ExecuteCommandOptions::default(),
         )
         .await?;
-    if !command_output.success() {
-        return Ok(false);
-    }
-    let stdout = String::from_utf8_lossy(&command_output.stdout);
-    Ok(stdout.trim().eq_ignore_ascii_case("true"))
+    Ok(command_output.success())
 }
 
 fn shell_quoted_literal(value: &str, shell_type: ShellType) -> String {
