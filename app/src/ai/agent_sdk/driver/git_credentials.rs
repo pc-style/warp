@@ -25,6 +25,7 @@ pub(crate) const GIT_CREDENTIALS_REFRESH_INTERVAL: Duration = Duration::from_sec
 
 const DEFAULT_GIT_NAME: &str = "Oz";
 const DEFAULT_GIT_EMAIL: &str = "oz-agent@warp.dev";
+const CREDENTIAL_CACHE_TIMEOUT_SECONDS: u32 = 70 * 60;
 
 pub(crate) fn write_git_credentials(credentials: &[GitCredential]) -> Result<()> {
     for cred in credentials {
@@ -115,7 +116,10 @@ fn run_git_config_add(key: &str, value: &str) {
 pub(crate) fn setup_git_config(credentials: &[GitCredential]) {
     // 70 minutes keeps credentials warm past the normal refresh cadence (50m)
     // while still naturally expiring if refreshes stop.
-    run_git_config("credential.helper", &format!("cache --timeout={}", 70 * 60));
+    run_git_config(
+        "credential.helper",
+        &format!("cache --timeout={CREDENTIAL_CACHE_TIMEOUT_SECONDS}"),
+    );
     // Use --add for both forms per host so all values coexist as a
     // multi-value key rather than each entry overwriting the previous one.
     for cred in credentials {
