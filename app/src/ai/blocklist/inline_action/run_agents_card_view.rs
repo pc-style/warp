@@ -851,7 +851,13 @@ fn render_body(state: &RunAgentsEditState, app: &AppContext) -> Box<dyn Element>
     let mut column = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
 
     column.add_child(render_summary(state, appearance));
+    column.add_child(render_prompt_section(
+        "Base prompt",
+        &state.base_prompt,
+        appearance,
+    ));
     column.add_child(render_agents_section(state, app));
+    column.add_child(render_agent_prompts_section(state, appearance));
 
     Container::new(column.finish())
         .with_horizontal_padding(16.)
@@ -909,6 +915,52 @@ fn render_agents_section(state: &RunAgentsEditState, app: &AppContext) -> Box<dy
         .with_child(Container::new(label).with_margin_bottom(6.).finish())
         .with_child(pills_row.finish())
         .finish()
+}
+
+fn render_prompt_section(label: &str, prompt: &str, appearance: &Appearance) -> Box<dyn Element> {
+    let theme = appearance.theme();
+    let label = Text::new(
+        label.to_string(),
+        appearance.ui_font_family(),
+        appearance.monospace_font_size() - 1.,
+    )
+    .with_color(blended_colors::text_disabled(theme, theme.background()))
+    .finish();
+
+    let prompt_text = if prompt.trim().is_empty() {
+        "(empty)".to_string()
+    } else {
+        prompt.to_string()
+    };
+
+    let prompt_text = Text::new(
+        prompt_text,
+        appearance.ui_font_family(),
+        appearance.monospace_font_size(),
+    )
+    .with_color(blended_colors::text_main(theme, theme.background()))
+    .with_selectable(true)
+    .finish();
+
+    Flex::column()
+        .with_cross_axis_alignment(CrossAxisAlignment::Stretch)
+        .with_child(Container::new(label).with_margin_bottom(4.).finish())
+        .with_child(Container::new(prompt_text).with_margin_bottom(12.).finish())
+        .finish()
+}
+
+fn render_agent_prompts_section(
+    state: &RunAgentsEditState,
+    appearance: &Appearance,
+) -> Box<dyn Element> {
+    let mut column = Flex::column().with_cross_axis_alignment(CrossAxisAlignment::Stretch);
+
+    for cfg in &state.agent_run_configs {
+        let label = format!("{} prompt", cfg.name);
+        column.add_child(render_prompt_section(&label, &cfg.prompt, appearance));
+    }
+
+    column.finish()
 }
 
 fn render_terminal_state(
