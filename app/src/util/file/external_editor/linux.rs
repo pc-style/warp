@@ -134,7 +134,11 @@ impl EditorMetadata {
     fn process_field_code(&self, processed_exec: &mut String, field_code: char, file_path: &Path) {
         match field_code {
             // file path
-            'f' | 'F' => *processed_exec += file_path.to_str().unwrap_or_default(),
+            'f' | 'F' => {
+                if let Some(file_path) = file_path.to_str() {
+                    *processed_exec += shell_words::quote(file_path).as_ref();
+                }
+            }
             // URI
             'u' | 'U' => {
                 // TODO(daprahamian): B/c we are using canonicalize, this will fail
@@ -206,7 +210,7 @@ impl EditorMetadata {
                             *acc += &format!("--column {column_num} ");
                         }
                     }
-                    *acc += file_path;
+                    *acc += shell_words::quote(file_path).as_ref();
                 }
             }
             other => me.process_field_code(acc, other, file_path),
@@ -227,13 +231,14 @@ impl EditorMetadata {
         self.build_command(|me, acc, field_code| match field_code {
             'f' | 'F' | 'u' | 'U' => {
                 if let Some(file_path) = file_path.to_str() {
-                    *acc += file_path;
+                    let mut file_arg = file_path.to_string();
                     if let Some(line_column_number) = line_column_number {
-                        *acc += &format!(":{}", line_column_number.line_num);
+                        file_arg += &format!(":{}", line_column_number.line_num);
                         if let Some(column_num) = line_column_number.column_num {
-                            *acc += &format!(":{column_num}");
+                            file_arg += &format!(":{column_num}");
                         }
                     }
+                    *acc += shell_words::quote(&file_arg).as_ref();
                 }
             }
             other => me.process_field_code(acc, other, file_path),
