@@ -773,7 +773,7 @@ impl Action {
                     log::warn!("Could not parse path to open a new tab/window");
                     return;
                 };
-                open_file(window_id, path, ctx);
+                open_file(window_id, path, false, ctx);
             }
             Action::Docker => {
                 if let Err(err) = open_docker_container(url, ctx) {
@@ -1010,7 +1010,7 @@ pub fn handle_incoming_uri(url: &Url, ctx: &mut AppContext) {
     #[cfg(feature = "local_tty")]
     if url.scheme() == "file" {
         if let Ok(path) = url.to_file_path() {
-            open_file(primary_window_id, path, ctx);
+            open_file(primary_window_id, path, true, ctx);
         }
         return;
     }
@@ -1074,12 +1074,12 @@ enum OpenFileAction {
 
 /// Pure routing decision for `open_file`. Extracted so it can be unit-tested without
 /// standing up a full `AppContext`.
-fn classify_open_file_action(path: &Path) -> OpenFileAction {
+fn classify_open_file_action(path: &Path, allow_execute_runnable_scripts: bool) -> OpenFileAction {
     if is_markdown_file(path) {
         return OpenFileAction::Notebook;
     }
     if path.is_file() {
-        if is_runnable_shell_script(path) {
+        if allow_execute_runnable_scripts && is_runnable_shell_script(path) {
             return OpenFileAction::ExecuteInSession;
         }
         // Anything we can show in the editor opens there. The second branch catches
@@ -1098,18 +1098,22 @@ fn classify_open_file_action(path: &Path) -> OpenFileAction {
 /// * For directories, open a new session at the directory path.
 /// * For other files, open a new session at the parent directory path, then possibly execute the
 ///   file.
-fn open_file(window_id: Option<WindowId>, path: PathBuf, ctx: &mut AppContext) {
+fn open_file(
+    window_id: Option<WindowId>,
+    path: PathBuf,
+    allow_execute_runnable_scripts: bool,
+    ctx: &mut AppContext,
+) {
     let auth_state = AuthStateProvider::as_ref(ctx).get();
     if !auth_state.is_logged_in() {
         return;
     }
-
     let primary_window_and_view = window_id.and_then(|window_id| {
         ctx.root_view_id(window_id)
             .map(|view_id| (window_id, view_id))
     });
 
-    let action = classify_open_file_action(&path);
+    let action = classify_open_file_action(&path, allow_execute_runnable_scripts);
     if action == OpenFileAction::Notebook {
         if let Some((primary_window_id, root_view_id)) = primary_window_and_view {
             ctx.dispatch_action(
