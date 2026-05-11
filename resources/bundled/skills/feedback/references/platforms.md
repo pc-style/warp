@@ -21,14 +21,14 @@ Use the script output directly when filling `Operating system`. Ask the user onl
 
 ## Warp version
 
-For packaged native Warp installs, run the bundled helper script to resolve the installed Warp version:
+For packaged native Warp installs, read the bundled version metadata file directly:
 
 ```bash
-python3 scripts/resolve_warp_version.py
+cat ../../metadata/version.json
 ```
 
-The script reads the bundled version metadata file (`bundled/metadata/version.json`) relative to its own location and prints a JSON object. When the version is available, the output is `{"warp_version": "..."}`; use that value directly when filling `Warp version`. When the metadata file is missing or unreadable, the script prints `{}` and exits 0 — treat that as "version unknown" and follow the fallbacks below.
+The file is expected to contain JSON with a `warp_version` field. When present, use that value directly when filling `Warp version`. If the file is missing, unreadable, or does not contain `warp_version`, treat that as "version unknown" and follow the fallbacks below.
 
-Ask the user only if Python is unavailable, the script returns an empty object, or the report is about a browser or web session rather than a packaged native install.
+Ask the user only if the metadata file is unavailable, does not include `warp_version`, or the report is about a browser or web session rather than a packaged native install.
 
 - Browser or web session with no local Warp executable: use the version or build identifier from the session URL or surrounding session metadata when present. If there is no concrete version string, record that it was a web session and leave `Warp version` as `Unknown` rather than guessing.
