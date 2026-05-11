@@ -2280,16 +2280,13 @@ impl Input {
                                     .default_host_slug()
                                     .map(String::from)
                             });
-                        if let Some(slug) = &effective_host {
-                            view.update(ctx, |selector, ctx| {
-                                selector.set_default_host(slug.clone(), ctx);
-                            });
-                        }
-                        if let Some(slug) = effective_host {
-                            view_model.update(ctx, |model, _ctx| {
-                                model.set_worker_host(Some(slug));
-                            });
-                        }
+                        view.update(ctx, |selector, ctx| match &effective_host {
+                            Some(slug) => selector.set_default_host(slug.clone(), ctx),
+                            None => selector.clear_default_host(ctx),
+                        });
+                        view_model.update(ctx, |model, _ctx| {
+                            model.set_worker_host(effective_host);
+                        });
                         // When the host selector menu closes (item picked or dismissed via
                         // Esc / click-outside), restore focus to the input editor so typing
                         // resumes immediately.
@@ -2331,16 +2328,13 @@ impl Input {
                                             .default_host_slug()
                                             .map(String::from)
                                     });
-                                if let Some(slug) = &effective_host {
-                                    view_for_ws.update(ctx, |selector, ctx| {
-                                        selector.set_default_host(slug.clone(), ctx);
-                                    });
-                                }
-                                if let Some(slug) = effective_host {
-                                    vm_for_ws.update(ctx, |model, _ctx| {
-                                        model.set_worker_host(Some(slug));
-                                    });
-                                }
+                                view_for_ws.update(ctx, |selector, ctx| match &effective_host {
+                                    Some(slug) => selector.set_default_host(slug.clone(), ctx),
+                                    None => selector.clear_default_host(ctx),
+                                });
+                                vm_for_ws.update(ctx, |model, _ctx| {
+                                    model.set_worker_host(effective_host);
+                                });
                             },
                         );
                         Some(view)

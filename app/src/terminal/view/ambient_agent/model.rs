@@ -811,6 +811,7 @@ impl AmbientAgentViewModel {
         self.environment_id = None;
         self.task_id = None;
         self.conversation_id = None;
+        self.worker_host = None;
         self.harness_model_id = None;
         self.harness_command_started = false;
         self.active_execution_session_id = None;

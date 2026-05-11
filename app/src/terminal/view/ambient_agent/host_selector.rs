@@ -157,6 +157,15 @@ impl HostSelector {
         self.refresh_menu(ctx);
     }
 
+    pub fn clear_default_host(&mut self, ctx: &mut ViewContext<Self>) {
+        self.selected = Host::Warp;
+        self.button.update(ctx, |button, ctx| {
+            button.set_label(self.selected.display_name().to_string(), ctx);
+        });
+        self.default_host = None;
+        self.refresh_menu(ctx);
+    }
+
     /// Programmatically opens the host selector popover. No-op if already open.
     pub fn open_menu(&mut self, ctx: &mut ViewContext<Self>) {
         self.set_menu_visibility(true, ctx);
