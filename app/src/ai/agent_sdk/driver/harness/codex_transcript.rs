@@ -127,6 +127,26 @@ pub(crate) fn find_session_file(sessions_root: &Path, session_id: Uuid) -> Optio
     None
 }
 
+
+/// Rewrite `session_meta.payload.cwd` (first JSONL line) to `working_dir` when present.
+///
+/// Codex resume uses the rollout JSONL as state input, so we force cwd to the user-selected
+/// run directory before rehydration.
+pub(crate) fn rewrite_session_meta_cwd(entries: &mut [Value], working_dir: &Path) {
+    let Some(first) = entries.first_mut() else {
+        return;
+    };
+    if first.get("type").and_then(|v| v.as_str()) != Some("session_meta") {
+        return;
+    }
+    let Some(payload) = first.get_mut("payload").and_then(Value::as_object_mut) else {
+        return;
+    };
+    payload.insert(
+        "cwd".to_string(),
+        Value::String(working_dir.to_string_lossy().into_owned()),
+    );
+}
 fn read_subdirs(parent: &Path) -> impl Iterator<Item = PathBuf> {
     fs::read_dir(parent)
         .into_iter()

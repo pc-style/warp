@@ -203,3 +203,31 @@ fn write_envelope_falls_back_to_today_when_timestamp_missing() {
     let found = find_session_file(tmp.path(), uuid);
     assert_eq!(found, Some(path));
 }
+
+#[test]
+fn rewrite_session_meta_cwd_updates_first_line_payload() {
+    let uuid = Uuid::new_v4();
+    let mut entries = vec![
+        serde_json::from_str::<serde_json::Value>(&session_meta_line(
+            uuid,
+            "/old",
+            "2026-04-30T01:54:20.000Z",
+            "0.55.0",
+        ))
+        .unwrap(),
+        serde_json::json!({"type": "event_msg"}),
+    ];
+
+    rewrite_session_meta_cwd(&mut entries, Path::new("/new"));
+
+    assert_eq!(entries[0]["payload"]["cwd"], "/new");
+}
+
+#[test]
+fn rewrite_session_meta_cwd_noop_when_first_line_not_session_meta() {
+    let mut entries = vec![serde_json::json!({"type": "event_msg", "payload": {"cwd": "/old"}})];
+
+    rewrite_session_meta_cwd(&mut entries, Path::new("/new"));
+
+    assert_eq!(entries[0]["payload"]["cwd"], "/old");
+}
