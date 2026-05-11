@@ -50,7 +50,11 @@ const GIT_COMMAND_TIMEOUT: Duration = Duration::from_secs(5);
 pub(crate) struct TouchedWorkspace {
     pub repos: Vec<TouchedRepo>,
     /// Files touched outside any `.git` directory.
-    /// They're captured as raw file contents in the snapshot manifest.
+    ///
+    /// Security: local-to-cloud handoff intentionally does not include
+    /// out-of-repo files, because action requests embedded in restored or
+    /// prompt-injected conversation history can reference arbitrary absolute
+    /// paths.
     pub orphan_files: Vec<PathBuf>,
 }
 
@@ -94,9 +98,11 @@ pub(crate) async fn derive_touched_workspace(paths: Vec<PathBuf>) -> TouchedWork
                 }
             }
             None => {
-                if tokio_fs::metadata(&path).await.is_ok_and(|m| m.is_file()) {
-                    orphan_files.push(path);
-                }
+                // Skip orphan files for handoff snapshots. Even if a path
+                // appears in tool-call history, we cannot safely prove here
+                // that it came from a successful, user-approved local write.
+                // Including arbitrary out-of-repo paths risks exfiltrating
+                // unrelated secrets (for example `~/.ssh/*`).
             }
         }
     }
