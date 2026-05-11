@@ -59,7 +59,7 @@ pub(super) fn build_local_opencode_child_command(prompt: &str) -> String {
 }
 pub(super) fn build_local_codex_child_command(prompt: &str) -> String {
     let quoted_prompt = shell_quote(prompt);
-    format!("codex --dangerously-bypass-approvals-and-sandbox {quoted_prompt}")
+    format!("codex {quoted_prompt}")
 }
 
 fn local_child_task_config(harness: Harness) -> Option<AgentConfigSnapshot> {

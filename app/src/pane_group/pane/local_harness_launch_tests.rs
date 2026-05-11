@@ -141,7 +141,7 @@ fn build_local_opencode_child_command_quotes_the_prompt() {
 fn build_local_codex_child_command_quotes_the_prompt() {
     assert_eq!(
         build_local_codex_child_command("hello world"),
-        "codex --dangerously-bypass-approvals-and-sandbox 'hello world'"
+        "codex 'hello world'"
     );
 }
 
@@ -189,7 +189,7 @@ async fn prepare_local_codex_child_launch_does_not_rewrite_global_codex_state() 
 
     assert_eq!(
         prepared.command,
-        "codex --dangerously-bypass-approvals-and-sandbox 'hello world'"
+        "codex 'hello world'"
     );
     assert!(!fake_home.path().join(".codex").exists());
 }
