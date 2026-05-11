@@ -1,4 +1,3 @@
-use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -12,8 +11,7 @@ use crate::ai::agent::{
     conversation::AIConversationId, AIAgentAction, AIAgentActionType, FileGlobResult,
     FileGlobV2Match, FileGlobV2Result,
 };
-use crate::ai::blocklist::BlocklistAIPermissions;
-use crate::ai::paths::{host_native_absolute_path, join_paths, shell_native_absolute_path};
+use crate::ai::paths::{join_paths, shell_native_absolute_path};
 use crate::terminal::model::session::ExecuteCommandOptions;
 use crate::{
     ai::agent::AIAgentActionResultType,
@@ -53,45 +51,13 @@ impl FileGlobExecutor {
 
     pub(super) fn should_autoexecute(
         &self,
-        input: ExecuteActionInput,
-        ctx: &mut ModelContext<Self>,
+        _input: ExecuteActionInput,
+        _ctx: &mut ModelContext<Self>,
     ) -> bool {
-        let ExecuteActionInput {
-            action:
-                AIAgentAction {
-                    action:
-                        AIAgentActionType::FileGlob { path, .. }
-                        | AIAgentActionType::FileGlobV2 {
-                            search_dir: path, ..
-                        },
-                    ..
-                },
-            conversation_id,
-        } = input
-        else {
-            return false;
-        };
-
-        // If the path is not provided, use the current working directory.
-        let path = path.clone().unwrap_or_else(|| ".".to_string());
-
-        let current_working_directory = self
-            .active_session
-            .as_ref(ctx)
-            .current_working_directory()
-            .cloned();
-        let shell = self.active_session.as_ref(ctx).shell_launch_data(ctx);
-        let absolute_path =
-            host_native_absolute_path(path.as_str(), &shell, &current_working_directory);
-
-        BlocklistAIPermissions::as_ref(ctx)
-            .can_read_files_with_conversation(
-                &conversation_id,
-                vec![PathBuf::from(absolute_path)],
-                Some(self.terminal_view_id),
-                ctx,
-            )
-            .is_allowed()
+        // File glob execution builds a shell command from model-controlled
+        // patterns and paths. Always require confirmation so this route is
+        // gated by command-execution permissions.
+        false
     }
 
     pub(super) fn execute(
