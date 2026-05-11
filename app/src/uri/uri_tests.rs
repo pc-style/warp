@@ -587,7 +587,7 @@ fn test_open_file_executable_sh_routes_to_execute() {
     std::fs::write(&p, b"#!/bin/sh\n:\n").unwrap();
     std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
     assert_eq!(
-        classify_open_file_action(&p),
+        classify_open_file_action(&p, true),
         OpenFileAction::ExecuteInSession
     );
 }
@@ -600,7 +600,7 @@ fn test_open_file_non_executable_sh_routes_to_editor() {
     let p = dir.path().join("view.sh");
     std::fs::write(&p, b"#!/bin/sh\n:\n").unwrap();
     std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o644)).unwrap();
-    assert_eq!(classify_open_file_action(&p), OpenFileAction::Editor);
+    assert_eq!(classify_open_file_action(&p, true), OpenFileAction::Editor);
 }
 
 #[test]
@@ -613,11 +613,23 @@ fn test_open_file_executable_bash_zsh_fish_route_to_execute() {
         std::fs::write(&p, b"#!/bin/sh\n:\n").unwrap();
         std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
         assert_eq!(
-            classify_open_file_action(&p),
+            classify_open_file_action(&p, true),
             OpenFileAction::ExecuteInSession,
             "{name} should route to ExecuteInSession",
         );
     }
+}
+
+
+#[test]
+#[cfg(unix)]
+fn test_open_file_executable_sh_from_untrusted_uri_routes_to_editor() {
+    use std::os::unix::fs::PermissionsExt;
+    let dir = tempfile::tempdir().unwrap();
+    let p = dir.path().join("run.sh");
+    std::fs::write(&p, b"#!/bin/sh\n:\n").unwrap();
+    std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o755)).unwrap();
+    assert_eq!(classify_open_file_action(&p, false), OpenFileAction::Editor);
 }
 
 #[test]
@@ -625,7 +637,7 @@ fn test_open_file_markdown_unchanged() {
     let dir = tempfile::tempdir().unwrap();
     let p = dir.path().join("README.md");
     std::fs::write(&p, b"# hi\n").unwrap();
-    assert_eq!(classify_open_file_action(&p), OpenFileAction::Notebook);
+    assert_eq!(classify_open_file_action(&p, true), OpenFileAction::Notebook);
 }
 
 #[test]
@@ -634,14 +646,14 @@ fn test_open_file_rust_source_still_opens_in_editor() {
     let dir = tempfile::tempdir().unwrap();
     let p = dir.path().join("main.rs");
     std::fs::write(&p, b"fn main() {}\n").unwrap();
-    assert_eq!(classify_open_file_action(&p), OpenFileAction::Editor);
+    assert_eq!(classify_open_file_action(&p, true), OpenFileAction::Editor);
 }
 
 #[test]
 fn test_open_file_directory_routes_to_session() {
     let dir = tempfile::tempdir().unwrap();
     assert_eq!(
-        classify_open_file_action(dir.path()),
+        classify_open_file_action(dir.path(), true),
         OpenFileAction::ExecuteInSession
     );
 }
@@ -657,7 +669,7 @@ fn test_open_file_non_runnable_shebang_routes_to_editor() {
     let p = dir.path().join("noext");
     std::fs::write(&p, b"#!/bin/sh\necho hi\n").unwrap();
     std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o644)).unwrap();
-    assert_eq!(classify_open_file_action(&p), OpenFileAction::Editor);
+    assert_eq!(classify_open_file_action(&p, true), OpenFileAction::Editor);
 }
 
 #[test]
