@@ -25,7 +25,14 @@ Before spawning the cloud agent, detect which repository you are running in. Che
 git remote get-url origin
 ```
 
-Verify the remote URL contains `warpdotdev/warp`. If it does not, warn the user that this skill only supports the warp repository and stop.
+Verify the remote URL is exactly one of the canonical Warp repository origins:
+
+- `git@github.com:warpdotdev/warp.git`
+- `https://github.com/warpdotdev/warp.git`
+
+If it is anything else (including forks, mirrors, or lookalike URLs that merely contain `warpdotdev/warp`), stop and warn the user.
+
+Also verify you are on a trusted branch in this canonical repository (for example, a branch in `warpdotdev/warp`, not an untrusted contributor branch) before continuing.
 
 The environment ID for the warp Dev Environment is `SVhg783GBFQHk1OfdPfFU9`.
 
