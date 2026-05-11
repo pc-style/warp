@@ -26,7 +26,8 @@ use super::super::terminal::{CommandHandle, TerminalDriver};
 use super::super::{AgentDriver, AgentDriverError};
 use super::claude_transcript::read_jsonl;
 use super::codex_transcript::{
-    codex_sessions_root, find_session_file, parse_session_meta, write_envelope, CodexResumeInfo,
+    codex_sessions_root, find_session_file, parse_session_meta, rewrite_session_meta_cwd,
+    write_envelope, CodexResumeInfo,
     CodexTranscriptEnvelope,
 };
 use super::json_utils::read_json_file_or_default;
@@ -171,7 +172,7 @@ impl CodexHarnessRunner {
         cli_command: &str,
         prompt: &str,
         _system_prompt: Option<&str>,
-        _working_dir: &Path,
+        working_dir: &Path,
         client: Arc<dyn HarnessSupportClient>,
         terminal_driver: ModelHandle<TerminalDriver>,
         resume: Option<CodexResumeInfo>,
@@ -190,6 +191,9 @@ impl CodexHarnessRunner {
                         e.context("Failed to resolve codex sessions root"),
                     )
                 })?;
+                let mut envelope = envelope;
+                rewrite_session_meta_cwd(&mut envelope.entries, working_dir);
+                envelope.cwd = working_dir.to_path_buf();
                 let path = write_envelope(&envelope, &sessions_root).map_err(|e| {
                     AgentDriverError::ConfigBuildFailed(
                         e.context("Failed to rehydrate codex transcript"),
