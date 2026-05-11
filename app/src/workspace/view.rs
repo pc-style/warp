@@ -5682,13 +5682,17 @@ impl Workspace {
                 #[cfg(feature = "local_fs")]
                 {
                     let settings = EditorSettings::as_ref(ctx);
-                    let target = resolve_file_target_with_editor_choice(
+                    let resolved_target = resolve_file_target_with_editor_choice(
                         path,
                         *settings.open_file_editor,
                         *settings.prefer_markdown_viewer,
                         *settings.open_file_layout,
                         None,
                     );
+                    let target = match resolved_target {
+                        FileTarget::MarkdownViewer(layout) => FileTarget::MarkdownViewer(layout),
+                        _ => FileTarget::CodeEditor(*settings.open_file_layout),
+                    };
                     self.open_file_with_target(
                         path.clone(),
                         target,
