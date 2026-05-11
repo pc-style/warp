@@ -1092,11 +1092,7 @@ impl AgentDriverRunner {
                 Ok(credentials) if !credentials.is_empty() => {
                     driver::git_credentials::setup_git_config(&credentials);
                     driver::git_credentials::configure_git_identity(&credentials);
-                    if let Err(e) = driver::git_credentials::write_git_credentials(&credentials) {
-                        log::warn!("Failed to write git credentials: {e:#}");
-                    } else {
-                        log::info!("Git credentials configured from taskGitCredentials");
-                    }
+                    log::info!("Git credentials fetched; skipping disk persistence for security");
                 }
                 Ok(_) => {
                     log::debug!("No git credentials returned; skipping credential file setup");
