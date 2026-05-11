@@ -264,13 +264,33 @@ impl<T: EventLoopSender> RemoteServerController<T> {
 
         match result {
             Ok(true) => {
-                let socket_path = transport.socket_path().clone();
-                self.state = SshInitState::AwaitingConnect {
-                    session_id,
-                    session_info,
-                    setup_start,
-                };
-                self.connect_session_for_current_identity(session_id, socket_path, ctx);
+                let install_mode = *WarpifySettings::as_ref(ctx)
+                    .ssh_extension_install_mode
+                    .value();
+                match install_mode {
+                    SshExtensionInstallMode::AlwaysAsk => {
+                        self.state = SshInitState::AwaitingUserChoice {
+                            session_info,
+                            transport,
+                            setup_start,
+                        };
+                        self.model_event_dispatcher.update(ctx, |d, ctx| {
+                            d.request_remote_server_block(session_id, ctx);
+                        });
+                    }
+                    SshExtensionInstallMode::AlwaysInstall => {
+                        let socket_path = transport.socket_path().clone();
+                        self.state = SshInitState::AwaitingConnect {
+                            session_id,
+                            session_info,
+                            setup_start,
+                        };
+                        self.connect_session_for_current_identity(session_id, socket_path, ctx);
+                    }
+                    SshExtensionInstallMode::NeverInstall => {
+                        self.flush_stashed_bootstrap(session_info, ctx);
+                    }
+                }
             }
             Ok(false) if has_old_binary => {
                 // Auto-update: a prior install exists, so skip the modal
