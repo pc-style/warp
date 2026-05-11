@@ -204,7 +204,16 @@ pub(crate) fn should_auto_launch(
     match active_config {
         Some((config, status)) => {
             let request = state.to_request();
-            status.is_approved() && matches_active_config(&request, config)
+            status.is_approved()
+                && matches_active_config(&request, config)
+                && request.skills.is_empty()
+                && !matches!(
+                    request.execution_mode,
+                    RunAgentsExecutionMode::Remote {
+                        computer_use_enabled: true,
+                        ..
+                    }
+                )
         }
         None => false,
     }
