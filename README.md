@@ -1,5 +1,5 @@
 > [!WARNING]
-> **Archived imported upstream derivative/reference — do not use this repository for new work.**
+> **Archive pending — do not use this repository for new work.** This imported upstream derivative/reference is scheduled for archive once repository administration permission is available.
 >
 > This repository was imported from the canonical [warpdotdev/warp](https://github.com/warpdotdev/warp) project, with shared upstream base commit [`c3df6eb6741d06a312e0beae757a8406fb643afa`](https://github.com/warpdotdev/warp/commit/c3df6eb6741d06a312e0beae757a8406fb643afa). The imported code is licensed under AGPL-3.0, with designated UI portions under MIT, as recorded in [`LICENSE-AGPL`](LICENSE-AGPL) and [`LICENSE-MIT`](LICENSE-MIT). The imported upstream history, license texts, copyright notices, and file-level notices are preserved.
 >
