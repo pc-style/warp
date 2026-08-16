@@ -1,3 +1,12 @@
+> [!WARNING]
+> **Archived imported upstream derivative/reference — do not use this repository for new work.**
+>
+> This repository was imported from the canonical [warpdotdev/warp](https://github.com/warpdotdev/warp) project, with shared upstream base commit [`c3df6eb6741d06a312e0beae757a8406fb643afa`](https://github.com/warpdotdev/warp/commit/c3df6eb6741d06a312e0beae757a8406fb643afa). The imported code is licensed under AGPL-3.0, with designated UI portions under MIT, as recorded in [`LICENSE-AGPL`](LICENSE-AGPL) and [`LICENSE-MIT`](LICENSE-MIT). The imported upstream history, license texts, copyright notices, and file-level notices are preserved.
+>
+> **Maintained pc-style delta:** none. **Historical, unmaintained delta:** 36 commits added security hardening and fixes (including URI/file handling, credentials, remote reconnect, SSH, command execution, agent actions, local-to-cloud handoff, and related merge commits); the last custom commit was 2026-05-11. There is no ongoing upstream sync, maintenance, documentation update, release, or support here.
+>
+> Use [the canonical upstream](https://github.com/warpdotdev/warp) for current code, releases, issues, and security updates.
+
 <a href="https://www.warp.dev">
     <img width="1024" alt="Warp Agentic Development Environment product preview" src="https://github.com/user-attachments/assets/9976b2da-2edd-4604-a36c-8fd53719c6d4" />
 </a>
